@@ -9,6 +9,13 @@
     <p id="category-name">カテゴリを読み込み中...</p>
 
     <script>
+      // iPad に保存されたトークンを取得
+      const token = localStorage.getItem("github_token");
+
+      if (!token) {
+        alert("トークンが設定されていません。\ntoken.html で設定してください。");
+      }
+      
       // URL から category=◯◯ を取得
       const params = new URLSearchParams(window.location.search);
       const category = params.get("category");
