@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Token Setup</title>
+</head>
+<body>
+  <h1>トークン設定</h1>
+  <p>GitHub のトークンを入力して保存してください。</p>
+
+  <input id="token-input" type="password" placeholder="トークンを入力" style="width:80%; padding:10px; font-size:18px;">
+  <br><br>
+  <button onclick="saveToken()" style="padding:10px 20px; font-size:18px;">保存</button>
+
+  <p id="status"></p>
+
+  <script>
+    function saveToken() {
+      const token = document.getElementById("token-input").value;
+      if (!token) {
+        document.getElementById("status").textContent = "トークンを入力してください。";
+        return;
+      }
+      localStorage.setItem("github_token", token);
+      document.getElementById("status").textContent = "保存しました！";
+    }
+  </script>
+</body>
+</html>
