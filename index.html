@@ -3,9 +3,48 @@
   <head>
     <meta charset="UTF-8">
     <title>Word Game</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        text-align: center;
+        background: #f7f7ff;
+        padding: 20px;
+      }
+      h1 {
+        font-size: 32px;
+        margin-bottom: 20px;
+        color: #444;
+      }
+      .category-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 16px;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      .category-btn {
+        background: #fff;
+        border: 2px solid #ddd;
+        border-radius: 16px;
+        padding: 20px;
+        font-size: 20px;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .category-btn:hover {
+        background: #f0f0ff;
+        transform: scale(1.05);
+      }
+    </style>
   </head>
   <body>
-    <h1>Word Game Web</h1>
-    <p>GitHub Pages setup test</p>
+    <h1>カテゴリを選んでね</h1>
+
+    <div class="category-grid">
+      <button class="category-btn">どうぶつ</button>
+      <button class="category-btn">たべもの</button>
+      <button class="category-btn">のりもの</button>
+      <button class="category-btn">くだもの</button>
+    </div>
+
   </body>
-</html>
