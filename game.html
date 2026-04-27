@@ -50,14 +50,43 @@
         return JSON.parse(jsonText);
       }
 
+      async function fetchImageBase64(path) {
+        const url = `https://api.github.com/repos/maccccchon-collab/wordgame-assets/contents/${path}`;
+
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `token ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          console.error("画像を取得できませんでした:", path, response.status);
+          return null;
+        }
+
+        const data = await response.json();
+        return "data:image/*;base64," + data.content;
+      }
+
       async function startGame() {
         const materials = await loadMaterials();
         if (!materials) return;
 
-        // 選んだカテゴリのデータだけ取り出す
         const items = materials.filter(item => item.category === category);
 
         console.log("選んだカテゴリのデータ:", items);
+
+        // まず1つ目の画像を表示してみる
+        if (items.length > 0) {
+          const imgBase64 = await fetchImageBase64(items[0].image);
+
+          if (imgBase64) {
+            const img = document.createElement("img");
+            img.src = imgBase64;
+            img.style.width = "200px";
+            document.body.appendChild(img);
+          }
+        }
       }
 
       startGame();
