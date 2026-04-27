@@ -28,6 +28,40 @@
         document.getElementById("category-name").textContent =
           "カテゴリが見つかりませんでした";
       }
+
+      async function loadMaterials() {
+        const url = "https://api.github.com/repos/maccccchon-collab/wordgame-assets/contents/materials.json";
+
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `token ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          console.error("materials.json を取得できませんでした:", response.status);
+          return null;
+        }
+
+        const data = await response.json();
+
+        // GitHub API は base64 で返すのでデコードする
+        const jsonText = atob(data.content);
+        return JSON.parse(jsonText);
+      }
+
+      async function startGame() {
+        const materials = await loadMaterials();
+        if (!materials) return;
+
+        // 選んだカテゴリのデータだけ取り出す
+        const items = materials.filter(item => item.category === category);
+
+        console.log("選んだカテゴリのデータ:", items);
+      }
+
+      startGame();
+      
     </script>
   </body>
 </html>
