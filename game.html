@@ -69,24 +69,23 @@
       }
 
       async function startGame() {
-        const materials = await loadMaterials();
-        if (!materials) return;
+        const path = "images/1.jpg";  // ← 強制的に 1.jpg を指定
 
-        const items = materials;
+        const imgBase64 = await fetchImageBase64(path);
 
-        console.log("選んだカテゴリのデータ:", items);
+        console.log("1.jpg の取得結果:", imgBase64 ? "成功" : "失敗");
 
-        // まず1つ目の画像を表示してみる
-        if (items.length > 0) {
-          const imgBase64 = await fetchImageBase64(items[0].image);
-
-          if (imgBase64) {
-            const img = document.createElement("img");
-            img.src = imgBase64;
-            img.style.width = "200px";
-            document.body.appendChild(img);
-          }
+        if (imgBase64) {
+          const img = document.createElement("img");
+          img.src = imgBase64;
+          img.style.width = "200px";
+          document.body.appendChild(img);
+        } else {
+          const p = document.createElement("p");
+          p.textContent = "1.jpg を読み込めませんでした（404 の可能性）";
+          document.body.appendChild(p);
         }
+      }
       }
 
       startGame();
