@@ -1,120 +1,273 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Word Game - Play</title>
-  </head>
-  <body>
-    <h1 id="title">ゲーム画面</h1>
-    <p id="category-name">カテゴリを読み込み中...</p>
+<head>
+  <meta charset="UTF-8">
+  <title>Word Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      background: #f7f7f7;
+    }
 
-    <script>
-      const token = localStorage.getItem("github_token");
+    #title {
+      font-size: 28px;
+      margin: 20px 0 10px;
+    }
 
-      if (!token) {
-        alert("トークンが設定されていません。\ntoken.html で設定してください。");
-      }
+    #category-name {
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
 
-      const owner = "maccccchon-collab";   // ← あなたの GitHub ID（c の数はここで統一）
-      const repo  = "wordgame-assets";
+    #game-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
 
-      // URL から category を取得
-      const params = new URLSearchParams(window.location.search);
-      const category = params.get("category");
+    #choices {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      width: 90%;
+      max-width: 700px;
+      margin: 0 auto;
+    }
 
-      if (category) {
-        document.getElementById("category-name").textContent =
-          "選んだカテゴリ：" + category;
-      }
+    .choice-img {
+      width: 100%;
+      border-radius: 12px;
+      background: white;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
 
-      // materials.json を取得
-      async function loadMaterials() {
-        const url = `https://api.github.com/repos/${owner}/${repo}/contents/materials.json`;
+    .choice-img:active {
+      transform: scale(0.95);
+    }
 
-        const response = await fetch(url, {
-          headers: { Authorization: `token ${token}` }
-        });
+    #progress {
+      margin-top: 20px;
+      font-size: 22px;
+    }
 
-        if (!response.ok) {
-          console.error("materials.json を取得できません:", response.status);
-          return null;
-        }
+    #sound-btn {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      font-size: 28px;
+      padding: 10px 18px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      cursor: pointer;
+    }
 
-        const data = await response.json();
-        const jsonText = atob(data.content);
-        return JSON.parse(jsonText);
-      }
+    /* 結果画面 */
+    #result-area img {
+      width: 150px;
+      margin: 10px;
+      border-radius: 10px;
+      background: white;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
 
-      // git/blobs API で確実に base64 を取得
-      async function fetchImageBase64(path) {
-        const contentsUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+    .result-btn {
+      font-size: 22px;
+      padding: 12px 20px;
+      margin: 10px;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
 
-        const contentsRes = await fetch(contentsUrl, {
-          headers: { Authorization: `token ${token}` }
-        });
+  <div id="sound-btn">♪</div>
 
-        if (!contentsRes.ok) {
-          console.error("contents 取得失敗:", path, contentsRes.status);
-          return null;
-        }
+  <h1 id="title">Word Game</h1>
+  <p id="category-name">Loading...</p>
 
-        const contentsData = await contentsRes.json();
+  <div id="game-area">
+    <div id="choices"></div>
+    <div id="progress"></div>
+  </div>
 
-        if (!contentsData.sha) {
-          console.error("sha が取得できません:", contentsData);
-          return null;
-        }
+  <div id="result-area" style="display:none;"></div>
 
-        const blobUrl = `https://api.github.com/repos/${owner}/${repo}/git/blobs/${contentsData.sha}`;
+<script>
+  const token = localStorage.getItem("github_token");
+  const owner = "maccccchon-collab";  // ← あなたの GitHub ID
+  const repo  = "wordgame-assets";
 
-        const blobRes = await fetch(blobUrl, {
-          headers: { Authorization: `token ${token}` }
-        });
+  const params = new URLSearchParams(window.location.search);
+  const category = params.get("category");
 
-        if (!blobRes.ok) {
-          console.error("blob 取得失敗:", path, blobRes.status);
-          return null;
-        }
+  document.getElementById("category-name").textContent = "Category: " + category;
 
-        const blobData = await blobRes.json();
+  let materials = [];
+  let gameData = [];
+  let current = 0;
+  let wrongList = [];
 
-        return "data:image/*;base64," + blobData.content;
-      }
+  // -------------------------
+  // GitHub API: materials.json 読み込み
+  // -------------------------
+  async function loadMaterials() {
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/materials.json`;
 
-      async function startGame() {
-        const materials = await loadMaterials();
-        if (!materials) return;
+    const res = await fetch(url, {
+      headers: { Authorization: `token ${token}` }
+    });
 
-        // ★ tags に category が含まれるものだけ抽出
-        const filtered = materials.filter(item =>
-          item.tags && item.tags.includes(category)
-        );
+    const data = await res.json();
+    return JSON.parse(atob(data.content));
+  }
 
-        console.log("カテゴリに一致したデータ:", filtered);
+  // -------------------------
+  // GitHub API: 画像・音声を base64 で取得
+  // -------------------------
+  async function fetchBlobBase64(path) {
+    const contentsUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
 
-        if (filtered.length === 0) {
-          document.body.insertAdjacentHTML("beforeend",
-            "<p>このカテゴリの画像はありません。</p>");
-          return;
-        }
+    const contentsRes = await fetch(contentsUrl, {
+      headers: { Authorization: `token ${token}` }
+    });
 
-        // とりあえず最初の1枚を表示
-        const first = filtered[0];
+    const contentsData = await contentsRes.json();
+    const blobUrl = `https://api.github.com/repos/${owner}/${repo}/git/blobs/${contentsData.sha}`;
 
-        const imgBase64 = await fetchImageBase64(first.image);
+    const blobRes = await fetch(blobUrl, {
+      headers: { Authorization: `token ${token}` }
+    });
 
-        if (imgBase64) {
-          const img = document.createElement("img");
-          img.src = imgBase64;
-          img.style.width = "200px";
-          document.body.appendChild(img);
-        } else {
-          document.body.insertAdjacentHTML("beforeend",
-            "<p>画像を読み込めませんでした。</p>");
-        }
-      }
+    const blobData = await blobRes.json();
+    return "data:;base64," + blobData.content;
+  }
 
-      startGame();
-    </script>
-  </body>
-</html>
+  // -------------------------
+  // シャッフル
+  // -------------------------
+  function shuffle(arr) {
+    return arr.sort(() => Math.random() - 0.5);
+  }
+
+  // -------------------------
+  // ゲーム開始
+  // -------------------------
+  async function startGame() {
+    materials = await loadMaterials();
+
+    const filtered = materials.filter(m =>
+      m.tags && m.tags.includes(category)
+    );
+
+    if (filtered.length < 10) {
+      alert("This category has less than 10 items.");
+      return;
+    }
+
+    gameData = shuffle(filtered).slice(0, 10);
+    current = 0;
+    wrongList = [];
+
+    showQuestion();
+  }
+
+  // -------------------------
+  // 問題表示
+  // -------------------------
+  async function showQuestion() {
+    if (current >= 10) {
+      showResult();
+      return;
+    }
+
+    const q = gameData[current];
+
+    // 音声再生
+    const soundBase64 = await fetchBlobBase64(q.sound);
+    const audio = new Audio(soundBase64);
+    audio.play();
+
+    document.getElementById("sound-btn").onclick = () => audio.play();
+
+    // 選択肢
+    const choicesArea = document.getElementById("choices");
+    choicesArea.innerHTML = "";
+
+    let choices = shuffle(gameData).slice(0, 4);
+    if (!choices.includes(q)) choices[0] = q;
+    choices = shuffle(choices);
+
+    for (const c of choices) {
+      const imgBase64 = await fetchBlobBase64(c.image);
+
+      const img = document.createElement("img");
+      img.src = imgBase64;
+      img.className = "choice-img";
+
+      img.onclick = () => checkAnswer(c);
+
+      choicesArea.appendChild(img);
+    }
+
+    document.getElementById("progress").textContent =
+      `${current + 1} / 10`;
+  }
+
+  // -------------------------
+  // 答えチェック
+  // -------------------------
+  async function checkAnswer(selected) {
+    const q = gameData[current];
+
+    let soundPath = "";
+    if (selected.id === q.id) {
+      soundPath = "sounds/pinpon.mp3";
+    } else {
+      soundPath = "sounds/buzzer.mp3";
+      wrongList.push(q);
+    }
+
+    const s = await fetchBlobBase64(soundPath);
+    new Audio(s).play();
+
+    current++;
+    setTimeout(showQuestion, 800);
+  }
+
+  // -------------------------
+  // 結果画面
+  // -------------------------
+  async function showResult() {
+    document.getElementById("game-area").style.display = "none";
+
+    const result = document.getElementById("result-area");
+    result.style.display = "block";
+
+    result.innerHTML = `<h2>Result: ${10 - wrongList.length} / 10</h2>`;
+
+    for (const w of wrongList) {
+      const imgBase64 = await fetchBlobBase64(w.image);
+      result.innerHTML += `<img src="${imgBase64}">`;
+    }
+
+    result.innerHTML += `
+      <div>
+        <button class="result-btn" onclick="startGame()">Try Again</button>
+        <button class="result-btn" onclick="location.href='index.html'">Back</button>
+      </div>
+    `;
+  }
+
+  startGame();
+</script>
+
+</body>
