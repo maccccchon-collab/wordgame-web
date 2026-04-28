@@ -29,27 +29,6 @@
           "カテゴリが見つかりませんでした";
       }
 
-      async function loadMaterials() {
-        const url = "https://api.github.com/repos/maccccchon-collab/wordgame-assets/contents/materials.json";
-
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `token ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          console.error("materials.json を取得できませんでした:", response.status);
-          return null;
-        }
-
-        const data = await response.json();
-
-        // GitHub API は base64 で返すのでデコードする
-        const jsonText = atob(data.content);
-        return JSON.parse(jsonText);
-      }
-
       async function fetchImageBase64(path) {
         const url = `https://api.github.com/repos/maccccchon-collab/wordgame-assets/contents/${path}`;
 
@@ -86,10 +65,8 @@
           document.body.appendChild(p);
         }
       }
-      }
 
       startGame();
-      
     </script>
   </body>
 </html>
