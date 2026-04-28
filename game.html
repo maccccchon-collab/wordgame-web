@@ -1,24 +1,17 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Word Game - Play</title>
-  </head>
-  <body>
-    <h1 id="title">ゲーム画面</h1>
-    <p id="category-name">カテゴリを読み込み中...</p>
 
-    <script>
+      // トークン取得
       const token = localStorage.getItem("github_token");
 
       if (!token) {
         alert("トークンが設定されていません。\ntoken.html で設定してください。");
       }
 
-      async function fetchImageBase64(path) {
-        const url = `https://api.github.com/repos/maccccchon-collab/wordgame-assets/contents/${path}`;
+      // GitHub API でファイルの存在だけ確認し、
+      // 実際の画像は raw.githubusercontent.com から取得する
+      async function fetchImageUrl(path) {
+        const apiUrl = `https://api.github.com/repos/maccccchon-collab/wordgame-assets/contents/${path}`;
 
-        const response = await fetch(url, {
+        const response = await fetch(apiUrl, {
           headers: {
             Authorization: `token ${token}`
           }
@@ -29,20 +22,21 @@
           return null;
         }
 
-        const data = await response.json();
-        return "data:image/*;base64," + data.content;
+        // raw.githubusercontent.com の URL を自分で作る（これが最も確実）
+        const rawUrl = `https://raw.githubusercontent.com/maccccchon-collab/wordgame-assets/main/${path}`;
+        return rawUrl;
       }
 
       async function startGame() {
-        const path = "images/7.png";
+        const path = "images/1.jpg";  // ← 強制的に 1.jpg を表示
 
-        const imgBase64 = await fetchImageBase64(path);
+        const imgUrl = await fetchImageUrl(path);
 
-        console.log("1.jpg の取得結果:", imgBase64 ? "成功" : "失敗");
+        console.log("1.jpg の取得結果:", imgUrl ? "成功" : "失敗");
 
-        if (imgBase64) {
+        if (imgUrl) {
           const img = document.createElement("img");
-          img.src = imgBase64;
+          img.src = imgUrl;
           img.style.width = "200px";
           document.body.appendChild(img);
         } else {
@@ -55,4 +49,3 @@
       startGame();
     </script>
   </body>
-</html>
