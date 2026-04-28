@@ -16,30 +16,25 @@
       }
 
       async function fetchImageBase64(path) {
-  const url = `https://api.github.com/repos/maccccchon-collab/wordgame-assets/contents/${path}`;
+        const url = `https://api.github.com/repos/maccccchon-collab/wordgame-assets/contents/${path}`;
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `token ${token}`
-    }
-  });
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `token ${token}`
+          }
+        });
 
-  if (!response.ok) {
-    console.error("画像を取得できませんでした:", path, response.status);
-    return null;
-  }
+        if (!response.ok) {
+          console.error("画像を取得できませんでした:", path, response.status);
+          return null;
+        }
 
-  const data = await response.json();
+        const data = await response.json();
+        return "data:image/*;base64," + data.content;
+      }
 
-  // content が空の場合は download_url を使う
-  if (!data.content) {
-    return data.download_url;
-  }
-
-  return "data:image/*;base64," + data.content;
-}
       async function startGame() {
-        const path = "images/1.jpg";
+        const path = "images/7.jpg";
 
         const imgBase64 = await fetchImageBase64(path);
 
