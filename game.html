@@ -9,49 +9,77 @@
     <p id="category-name">カテゴリを読み込み中...</p>
 
     <script>
-      // トークン取得
       const token = localStorage.getItem("github_token");
 
       if (!token) {
         alert("トークンが設定されていません。\ntoken.html で設定してください。");
       }
 
-      // GitHub API でファイルの存在だけ確認し、
-      // 実際の画像は raw.githubusercontent.com から取得する
-      async function fetchImageUrl(path) {
-        const apiUrl = `https://api.github.com/repos/maccccchon-collab/wordgame-assets/contents/${path}`;
+      const owner = "maccccchon-collab";   // ← ここを自分のIDに合わせてね
+      const repo  = "wordgame-assets";
 
-        const response = await fetch(apiUrl, {
+      // 1) contents API でファイル情報を取得（sha を取る）
+      // 2) git/blobs API で base64 を取得（サイズ制限を回避）
+      async function fetchImageBase64(path) {
+        const contentsUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+
+        const contentsRes = await fetch(contentsUrl, {
           headers: {
             Authorization: `token ${token}`
           }
         });
 
-        if (!response.ok) {
-          console.error("画像を取得できませんでした:", path, response.status);
+        if (!contentsRes.ok) {
+          console.error("contents 取得失敗:", path, contentsRes.status);
           return null;
         }
 
-        // raw.githubusercontent.com の URL を自分で作る（これが最も確実）
-        const rawUrl = `https://raw.githubusercontent.com/maccccchon-collab/wordgame-assets/main/${path}`;
-        return rawUrl;
+        const contentsData = await contentsRes.json();
+
+        if (!contentsData.sha) {
+          console.error("sha が取得できませんでした:", contentsData);
+          return null;
+        }
+
+        const blobUrl = `https://api.github.com/repos/${owner}/${repo}/git/blobs/${contentsData.sha}`;
+
+        const blobRes = await fetch(blobUrl, {
+          headers: {
+            Authorization: `token ${token}`
+          }
+        });
+
+        if (!blobRes.ok) {
+          console.error("blob 取得失敗:", path, blobRes.status);
+          return null;
+        }
+
+        const blobData = await blobRes.json();
+
+        if (!blobData.content) {
+          console.error("blob の content が空です:", blobData);
+          return null;
+        }
+
+        // git/blobs は必ず base64 を返す
+        return "data:image/*;base64," + blobData.content;
       }
 
       async function startGame() {
-        const path = "images/1.jpg";  // ← 強制的に 1.jpg を表示
+        const path = "images/1.jpg";
 
-        const imgUrl = await fetchImageUrl(path);
+        const imgBase64 = await fetchImageBase64(path);
 
-        console.log("1.jpg の取得結果:", imgUrl ? "成功" : "失敗");
+        console.log("1.jpg の取得結果:", imgBase64 ? "成功" : "失敗");
 
-        if (imgUrl) {
+        if (imgBase64) {
           const img = document.createElement("img");
-          img.src = imgUrl;
+          img.src = imgBase64;
           img.style.width = "200px";
           document.body.appendChild(img);
         } else {
           const p = document.createElement("p");
-          p.textContent = "1.jpg を読み込めませんでした（404 の可能性）";
+          p.textContent = "1.jpg を読み込めませんでした（404 or API エラーの可能性）";
           document.body.appendChild(p);
         }
       }
