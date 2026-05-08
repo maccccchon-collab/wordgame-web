@@ -67,7 +67,6 @@
       cursor: pointer;
     }
 
-    /* 結果画面 */
     #result-area img {
       width: 150px;
       margin: 10px;
@@ -103,7 +102,7 @@
 
 <script>
   const token = localStorage.getItem("github_token");
-  const owner = "maccccchon-collab";  // ← あなたの GitHub ID
+  const owner = "maccccchon-collab";
   const repo  = "wordgame-assets";
 
   const params = new URLSearchParams(window.location.search);
@@ -117,43 +116,31 @@
   let wrongList = [];
 
   // -------------------------
-  // /contents/ API で base64 を取得（最速）
+  // /contents/ API で base64 を取得
   // -------------------------
   async function fetchBase64(path) {
-  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
 
-  const res = await fetch(url, {
-    headers: { Authorization: `token ${token}` }
-  });
+    const res = await fetch(url, {
+      headers: { Authorization: `token ${token}` }
+    });
 
-  if (!res.ok) {
-    console.error("取得失敗:", path, res.status);
-    return null;
+    if (!res.ok) {
+      console.error("取得失敗:", path, res.status);
+      return null;
+    }
+
+    const data = await res.json();
+    if (!data.content) return null;
+
+    let mime = "";
+    if (path.endsWith(".jpg") || path.endsWith(".jpeg")) mime = "image/jpeg";
+    else if (path.endsWith(".png")) mime = "image/png";
+    else if (path.endsWith(".mp3")) mime = "audio/mpeg";
+
+    return `data:${mime};base64,${data.content}`;
   }
 
-  const data = await res.json();
-
-  if (!data.content) {
-    console.error("content が空:", path);
-    return null;
-  }
-
-  // MIME タイプ判定
-  let mime = "";
-
-  if (path.endsWith(".jpg") || path.endsWith(".jpeg")) {
-    mime = "image/jpeg";
-  } else if (path.endsWith(".png")) {
-    mime = "image/png";
-  } else if (path.endsWith(".mp3")) {
-    mime = "audio/mpeg";
-  } else {
-    mime = "";
-  }
-
-  return `data:${mime};base64,${data.content}`;
-}
-  
   // -------------------------
   // materials.json 読み込み
   // -------------------------
@@ -176,7 +163,16 @@
   }
 
   // -------------------------
-  // ゲーム開始
+  // 選択肢を正しく作る（正解1＋不正解3）
+  // -------------------------
+  function makeChoices(q) {
+    const others = gameData.filter(item => item.id !== q.id);
+    const wrongs = shuffle(others).slice(0, 3);
+    return shuffle([q, ...wrongs]);
+  }
+
+  // -------------------------
+  // ゲーム開始（10問固定）
   // -------------------------
   async function startGame() {
     materials = await loadMaterials();
@@ -190,6 +186,7 @@
       return;
     }
 
+    // ★ 10問を最初に固定
     gameData = shuffle(filtered).slice(0, 10);
     current = 0;
     wrongList = [];
@@ -219,9 +216,7 @@
     const choicesArea = document.getElementById("choices");
     choicesArea.innerHTML = "";
 
-    let choices = shuffle(gameData).slice(0, 4);
-    if (!choices.includes(q)) choices[0] = q;
-    choices = shuffle(choices);
+    const choices = makeChoices(q);
 
     for (const c of choices) {
       const imgBase64 = await fetchBase64(c.image);
@@ -240,7 +235,7 @@
   }
 
   // -------------------------
-  // 答えチェック
+  // 答えチェック（正誤判定修正済み）
   // -------------------------
   async function checkAnswer(selected) {
     const q = gameData[current];
