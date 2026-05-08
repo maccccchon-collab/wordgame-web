@@ -117,7 +117,32 @@
   let wrongList = [];
 
   // -------------------------
-  // GitHub API: materials.json 読み込み
+  // /contents/ API で base64 を取得（最速）
+  // -------------------------
+  async function fetchBase64(path) {
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+
+    const res = await fetch(url, {
+      headers: { Authorization: `token ${token}` }
+    });
+
+    if (!res.ok) {
+      console.error("取得失敗:", path, res.status);
+      return null;
+    }
+
+    const data = await res.json();
+
+    if (!data.content) {
+      console.error("content が空:", path);
+      return null;
+    }
+
+    return "data:;base64," + data.content;
+  }
+
+  // -------------------------
+  // materials.json 読み込み
   // -------------------------
   async function loadMaterials() {
     const url = `https://api.github.com/repos/${owner}/${repo}/contents/materials.json`;
@@ -128,27 +153,6 @@
 
     const data = await res.json();
     return JSON.parse(atob(data.content));
-  }
-
-  // -------------------------
-  // GitHub API: 画像・音声を base64 で取得
-  // -------------------------
-  async function fetchBlobBase64(path) {
-    const contentsUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-
-    const contentsRes = await fetch(contentsUrl, {
-      headers: { Authorization: `token ${token}` }
-    });
-
-    const contentsData = await contentsRes.json();
-    const blobUrl = `https://api.github.com/repos/${owner}/${repo}/git/blobs/${contentsData.sha}`;
-
-    const blobRes = await fetch(blobUrl, {
-      headers: { Authorization: `token ${token}` }
-    });
-
-    const blobData = await blobRes.json();
-    return "data:;base64," + blobData.content;
   }
 
   // -------------------------
@@ -192,7 +196,7 @@
     const q = gameData[current];
 
     // 音声再生
-    const soundBase64 = await fetchBlobBase64(q.sound);
+    const soundBase64 = await fetchBase64(q.sound);
     const audio = new Audio(soundBase64);
     audio.play();
 
@@ -207,7 +211,7 @@
     choices = shuffle(choices);
 
     for (const c of choices) {
-      const imgBase64 = await fetchBlobBase64(c.image);
+      const imgBase64 = await fetchBase64(c.image);
 
       const img = document.createElement("img");
       img.src = imgBase64;
@@ -236,7 +240,7 @@
       wrongList.push(q);
     }
 
-    const s = await fetchBlobBase64(soundPath);
+    const s = await fetchBase64(soundPath);
     new Audio(s).play();
 
     current++;
@@ -255,7 +259,7 @@
     result.innerHTML = `<h2>Result: ${10 - wrongList.length} / 10</h2>`;
 
     for (const w of wrongList) {
-      const imgBase64 = await fetchBlobBase64(w.image);
+      const imgBase64 = await fetchBase64(w.image);
       result.innerHTML += `<img src="${imgBase64}">`;
     }
 
@@ -271,3 +275,4 @@
 </script>
 
 </body>
+</html>
