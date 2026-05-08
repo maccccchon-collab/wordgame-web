@@ -115,6 +115,12 @@
   let current = 0;
   let wrongList = [];
 
+  let currentAudio = null;
+  let isLocked = false;
+
+  let pinponData = null;
+  let buzzerData = null;
+
   // -------------------------
   // /contents/ API で base64 を取得
   // -------------------------
@@ -163,7 +169,7 @@
   }
 
   // -------------------------
-  // 選択肢を正しく作る（正解1＋不正解3）
+  // 選択肢（正解1＋不正解3）
   // -------------------------
   function makeChoices(q) {
     const others = gameData.filter(item => item.id !== q.id);
@@ -172,7 +178,7 @@
   }
 
   // -------------------------
-  // ゲーム開始（10問固定）
+  // ゲーム開始（プリロード付き）
   // -------------------------
   async function startGame() {
     materials = await loadMaterials();
@@ -186,43 +192,62 @@
       return;
     }
 
-    // ★ 10問を最初に固定
     gameData = shuffle(filtered).slice(0, 10);
     current = 0;
     wrongList = [];
+
+    // ★ 10問分の画像と音声をプリロード
+    for (const item of gameData) {
+      item.imageData = await fetchBase64(item.image);
+      item.soundData = await fetchBase64(item.sound);
+    }
+
+    // ★ 正解・不正解音もプリロード
+    pinponData = await fetchBase64("sounds/pinpon.mp3");
+    buzzerData = await fetchBase64("sounds/buzzer.mp3");
 
     showQuestion();
   }
 
   // -------------------------
-  // 問題表示
+  // 問題表示（音声ロック＋停止付き）
   // -------------------------
-  async function showQuestion() {
+  function showQuestion() {
     if (current >= 10) {
       showResult();
       return;
     }
 
+    isLocked = false;
+
     const q = gameData[current];
 
-    // 音声再生
-    const soundBase64 = await fetchBase64(q.sound);
-    const audio = new Audio(soundBase64);
-    audio.play();
+    // 前の音声を止める
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio = null;
+    }
 
-    document.getElementById("sound-btn").onclick = () => audio.play();
+    // プリロード済み音声を再生
+    currentAudio = new Audio(q.soundData);
+    currentAudio.play();
 
-    // 選択肢
+    document.getElementById("sound-btn").onclick = () => {
+      if (currentAudio) {
+        currentAudio.currentTime = 0;
+        currentAudio.play();
+      }
+    };
+
+    // 選択肢表示
     const choicesArea = document.getElementById("choices");
     choicesArea.innerHTML = "";
 
     const choices = makeChoices(q);
 
     for (const c of choices) {
-      const imgBase64 = await fetchBase64(c.image);
-
       const img = document.createElement("img");
-      img.src = imgBase64;
+      img.src = c.imageData;
       img.className = "choice-img";
 
       img.onclick = () => checkAnswer(c);
@@ -235,30 +260,41 @@
   }
 
   // -------------------------
-  // 答えチェック（正誤判定修正済み）
+  // 答えチェック（音声ロック＋停止）
   // -------------------------
-  async function checkAnswer(selected) {
+  function checkAnswer(selected) {
+    if (isLocked) return;
+    isLocked = true;
+
     const q = gameData[current];
 
-    let soundPath = "";
+    // 問題音声を止める
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio = null;
+    }
+
+    let feedbackAudio;
+
     if (selected.id === q.id) {
-      soundPath = "sounds/pinpon.mp3";
+      feedbackAudio = new Audio(pinponData);
     } else {
-      soundPath = "sounds/buzzer.mp3";
+      feedbackAudio = new Audio(buzzerData);
       wrongList.push(q);
     }
 
-    const s = await fetchBase64(soundPath);
-    new Audio(s).play();
+    feedbackAudio.play();
 
-    current++;
-    setTimeout(showQuestion, 800);
+    feedbackAudio.onended = () => {
+      current++;
+      showQuestion();
+    };
   }
 
   // -------------------------
   // 結果画面
   // -------------------------
-  async function showResult() {
+  function showResult() {
     document.getElementById("game-area").style.display = "none";
 
     const result = document.getElementById("result-area");
@@ -267,8 +303,7 @@
     result.innerHTML = `<h2>Result: ${10 - wrongList.length} / 10</h2>`;
 
     for (const w of wrongList) {
-      const imgBase64 = await fetchBase64(w.image);
-      result.innerHTML += `<img src="${imgBase64}">`;
+      result.innerHTML += `<img src="${w.imageData}">`;
     }
 
     result.innerHTML += `
