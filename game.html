@@ -120,27 +120,40 @@
   // /contents/ API で base64 を取得（最速）
   // -------------------------
   async function fetchBase64(path) {
-    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
 
-    const res = await fetch(url, {
-      headers: { Authorization: `token ${token}` }
-    });
+  const res = await fetch(url, {
+    headers: { Authorization: `token ${token}` }
+  });
 
-    if (!res.ok) {
-      console.error("取得失敗:", path, res.status);
-      return null;
-    }
-
-    const data = await res.json();
-
-    if (!data.content) {
-      console.error("content が空:", path);
-      return null;
-    }
-
-    return "data:;base64," + data.content;
+  if (!res.ok) {
+    console.error("取得失敗:", path, res.status);
+    return null;
   }
 
+  const data = await res.json();
+
+  if (!data.content) {
+    console.error("content が空:", path);
+    return null;
+  }
+
+  // MIME タイプ判定
+  let mime = "";
+
+  if (path.endsWith(".jpg") || path.endsWith(".jpeg")) {
+    mime = "image/jpeg";
+  } else if (path.endsWith(".png")) {
+    mime = "image/png";
+  } else if (path.endsWith(".mp3")) {
+    mime = "audio/mpeg";
+  } else {
+    mime = "";
+  }
+
+  return `data:${mime};base64,${data.content}`;
+}
+  
   // -------------------------
   // materials.json 読み込み
   // -------------------------
