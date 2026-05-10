@@ -100,6 +100,22 @@
 
   <div id="result-area" style="display:none;"></div>
 
+  <div id="loading" style="
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255,255,255,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  z-index: 9999;
+">
+  Loading...
+</div>
+
 <script>
   const token = localStorage.getItem("github_token");
   const owner = "maccccchon-collab";
@@ -181,6 +197,10 @@
   // ゲーム開始（プリロード付き）
   // -------------------------
 async function startGame() {
+
+  // ★ ローディング表示
+  document.getElementById("loading").style.display = "flex";
+
   materials = await loadMaterials();
 
   const filtered = materials.filter(m =>
@@ -213,9 +233,11 @@ async function startGame() {
   pinponData = pin;
   buzzerData = buz;
 
+  // ★ ローディング非表示
+  document.getElementById("loading").style.display = "none";
+
   showQuestion();
 }
-
   // -------------------------
   // 問題表示（音声ロック＋停止付き）
   // -------------------------
