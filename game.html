@@ -180,34 +180,41 @@
   // -------------------------
   // ゲーム開始（プリロード付き）
   // -------------------------
-  async function startGame() {
-    materials = await loadMaterials();
+async function startGame() {
+  materials = await loadMaterials();
 
-    const filtered = materials.filter(m =>
-      m.tags && m.tags.includes(category)
-    );
+  const filtered = materials.filter(m =>
+    m.tags && m.tags.includes(category)
+  );
 
-    if (filtered.length < 10) {
-      alert("This category has less than 10 items.");
-      return;
-    }
+  if (filtered.length < 10) {
+    alert("This category has less than 10 items.");
+    return;
+  }
 
-    gameData = shuffle(filtered).slice(0, 10);
-    current = 0;
-    wrongList = [];
+  gameData = shuffle(filtered).slice(0, 10);
+  current = 0;
+  wrongList = [];
 
-    // ★ 10問分の画像と音声をプリロード
-    for (const item of gameData) {
+  // ★ 10問分の画像と音声を並列プリロード
+  await Promise.all(
+    gameData.map(async item => {
       item.imageData = await fetchBase64(item.image);
       item.soundData = await fetchBase64(item.sound);
-    }
+    })
+  );
 
-    // ★ 正解・不正解音もプリロード
-    pinponData = await fetchBase64("sounds/pinpon.mp3");
-    buzzerData = await fetchBase64("sounds/buzzer.mp3");
+  // ★ 正解・不正解音も並列プリロード
+  const [pin, buz] = await Promise.all([
+    fetchBase64("sounds/pinpon.mp3"),
+    fetchBase64("sounds/buzzer.mp3")
+  ]);
 
-    showQuestion();
-  }
+  pinponData = pin;
+  buzzerData = buz;
+
+  showQuestion();
+}
 
   // -------------------------
   // 問題表示（音声ロック＋停止付き）
